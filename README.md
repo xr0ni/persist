@@ -29,37 +29,46 @@ You can also run `/persist` manually at any time to force a save point.
 
 ## Installation
 
-### 1. Create directories
+```powershell
+git clone https://github.com/xr0ni/persist.git
+cd persist
+.\install.ps1
+```
 
+The installer will:
+1. Ask for your projects directory (where handoff files get saved)
+2. Copy hooks to `~/.claude/hooks/`
+3. Copy the `/persist` skill to `~/.claude/skills/persist/`
+4. Add the hook config to `~/.claude/settings.json` (preserves your existing settings)
+5. Add the Persist section to `~/.claude/CLAUDE.md`
+
+Then restart Claude Code.
+
+You can also pass the path directly:
+
+```powershell
+.\install.ps1 -ProjectsRoot "C:\Users\YourName\Projects"
+```
+
+### Manual installation
+
+<details>
+<summary>Click to expand</summary>
+
+If you prefer to install manually:
+
+**1. Copy files:**
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\hooks"
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\persist"
+Copy-Item hooks\pre-compact.ps1 "$env:USERPROFILE\.claude\hooks\"
+Copy-Item hooks\compact.ps1 "$env:USERPROFILE\.claude\hooks\"
+Copy-Item skill\persist\SKILL.md "$env:USERPROFILE\.claude\skills\persist\"
 ```
 
-### 2. Copy files
+**2. Edit `$root` in both hook scripts** — set it to your projects directory.
 
-```powershell
-# From the repo root:
-Copy-Item hooks\pre-compact.ps1 "$env:USERPROFILE\.claude\hooks\pre-compact.ps1"
-Copy-Item hooks\compact.ps1 "$env:USERPROFILE\.claude\hooks\compact.ps1"
-Copy-Item skill\persist\SKILL.md "$env:USERPROFILE\.claude\skills\persist\SKILL.md"
-```
-
-### 3. Set your projects directory
-
-Open both hook scripts and change the `$root` variable at the top:
-
-**`~/.claude/hooks/pre-compact.ps1`** and **`~/.claude/hooks/compact.ps1`**:
-```powershell
-$root = "C:\Users\YourName\Projects"  # ← your projects directory
-```
-
-Persist matches your current chat's topic to a subfolder name and writes `handoff.md` there. If no subfolder matches, it writes to the root.
-
-### 4. Add hooks to settings.json
-
-Open `~/.claude/settings.json` and merge in the `hooks` block below. Replace the paths with your actual home directory.
-
+**3. Add to `~/.claude/settings.json`** (use forward slashes in paths):
 ```json
 {
   "hooks": {
@@ -89,11 +98,7 @@ Open `~/.claude/settings.json` and merge in the `hooks` block below. Replace the
 }
 ```
 
-> **Use forward slashes** (`/`) in the JSON paths. Backslashes get eaten by JSON + PowerShell double-escaping.
-
-### 5. Add the CLAUDE.md section
-
-Add this to your `~/.claude/CLAUDE.md` (or project-level `CLAUDE.md`):
+**4. Add to `~/.claude/CLAUDE.md`:**
 
 ````markdown
 ## Persist (Auto-Handoff)
@@ -102,7 +107,7 @@ Add this to your `~/.claude/CLAUDE.md` (or project-level `CLAUDE.md`):
 
 ```yaml
 persist:
-  projects_root: C:\Users\YourName\Projects  # ← same as your hook scripts
+  projects_root: C:\Users\YourName\Projects
 ```
 
 ### Cycle
@@ -121,9 +126,9 @@ List subdirectories of your projects root at runtime. Match the chat's topic to 
 `/persist` anytime.
 ````
 
-### 6. Restart Claude Code
+**5. Restart Claude Code.**
 
-Hooks load on startup. Restart to pick them up.
+</details>
 
 ## What a handoff looks like
 
@@ -183,22 +188,24 @@ Logs go to `~/.claude/hooks/context-keeper.log`:
 [2026-10-26 18:30:01] PRE-COMPACT: Session ID: abc123
 [2026-10-26 18:30:01] PRE-COMPACT: Spawning Haiku fork...
 [2026-10-26 18:30:15] PRE-COMPACT: Haiku fork succeeded (1842 chars)
-[2026-10-26 18:30:15] PRE-COMPACT: Handoff generated via Haiku fork
 [2026-10-26 18:30:16] COMPACT: Hook fired — scanning for handoffs
 [2026-10-26 18:30:16] COMPACT: Found 1 handoff(s)
 ```
 
-If the fork fails:
+## Uninstall
 
+```powershell
+Remove-Item "$env:USERPROFILE\.claude\hooks\pre-compact.ps1" -Force
+Remove-Item "$env:USERPROFILE\.claude\hooks\compact.ps1" -Force
+Remove-Item "$env:USERPROFILE\.claude\skills\persist" -Recurse -Force
+Remove-Item "$env:USERPROFILE\.claude\hooks\context-keeper.log" -Force
 ```
-[2026-10-26 18:30:05] PRE-COMPACT: Haiku fork failed (exit code: 1)
-[2026-10-26 18:30:05] PRE-COMPACT: Using filesystem fallback
-[2026-10-26 18:30:05] PRE-COMPACT: Fallback handoff saved
-```
+
+Then remove the `PreCompact` and `SessionStart` compact entries from `~/.claude/settings.json` and the `## Persist` section from `~/.claude/CLAUDE.md`.
 
 ## Cross-platform
 
-The hooks are PowerShell (Windows). For macOS/Linux, swap the hook commands in `settings.json` to point at bash equivalents. The logic is identical — bash ports are welcome as PRs.
+The hooks are PowerShell (Windows). For macOS/Linux, the logic is identical — bash ports are welcome as PRs.
 
 ## License
 
